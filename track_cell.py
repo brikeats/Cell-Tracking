@@ -180,17 +180,16 @@ def parse_command_line_args():
     description_str = 'Select a cell from a movie and track it across frames.'
     parser = argparse.ArgumentParser(description=description_str)
     parser.add_argument('tiff_movie', metavar='tiff movie', type=str, help='an imagej-style tiff movie')
-    parser.add_argument('-od', '--outdir', metavar='output directory', nargs='?',
-                        type=str, default='.', help='output directory')
     args = parser.parse_args()
-    return args.outdir, args.tiff_movie
+    return args.tiff_movie
+
 
 
 
 if __name__ == '__main__':
 
     ### parse command line arguments
-    outdir, tiff_fn = parse_command_line_args()
+    tiff_fn = parse_command_line_args()
 
     ### load raw movie frames
     print 'Loading %s...' % tiff_fn,
@@ -262,6 +261,7 @@ if __name__ == '__main__':
 
 
     ### write boundary points to file
+    outdir = '.'
     out_fn = 'cell%i_boundary_points.npy' % selected_label
     out_fn = os.path.join(outdir, out_fn)
     print 'Saving boundary points to', out_fn
