@@ -19,9 +19,9 @@ Everything is pure python except for the function `write_movie` in `BKlib.py`, w
 
 `visualize_tracking.py` shows the movie with the tracking results overlaid. Use the `-o` flag to specify an output avi filename in order to save the visualization as a movie.
 
-`create_cell_movie.py` extracts a small window around the cell of interest and saves it to a movie, so that the motion of the cell is "frozen". Note that the tiff can be a different channel from that used for cell tracking, i.e., you can use a channel that displays cell boundaries in `track_cell.py`, but another channel with this function. 
+`create_cell_movie.py` extracts a small window around the cell of interest and saves it to a movie, so that the motion of the cell is "frozen". Note that the tiff can be a different channel from that used for cell tracking, i.e., you can use a channel that displays cell boundaries in `track_cell.py`, but another channel with this script. 
 
-`plot_cell_trajectory.py` computes the centroids of the cell boundaries, smooths them with a Kalman filter, and creates a few plots to quantify motion.
+`plot_cell_trajectory.py` computes the centroids of the cell boundaries, smooths the trajectory with a Kalman filter, and creates a few plots to quantify motion.
 
 
 
