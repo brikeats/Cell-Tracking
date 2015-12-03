@@ -10,7 +10,7 @@ Python scripts for tracking cells in fluorescent microscopy, for [Ed Munro's gro
 * `pims` for reading tiff stacks
 * `ffmpeg` or `avconv` command line tools for creating movies
 
-Everything is pure python except for the function `write_movie` in `BKlib.py`, which uses `ffmpeg`/`avconv`. One of these will probably be installed on Linux machines; it can be installed on Mac using the binaries [here](http://ffmpegmac.net/). This should be useable on Windows, except that you won't be able to save numpy arrays as movies. 
+Everything is pure python except for the function `write_movie` in `BKlib.py`, which uses `ffmpeg`/`avconv`. One of these will probably be installed on Linux machines; it can be installed on Mac using the binaries [here](http://ffmpegmac.net/). The scripts should work on Windows, except that you won't be able to save numpy arrays as movies. 
 
 
 ## Scripts
