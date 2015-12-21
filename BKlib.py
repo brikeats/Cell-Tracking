@@ -1,22 +1,26 @@
-import os
+import time
+import itertools
+import platform
+import subprocess
 from functools import partial
 from scipy import optimize, ndimage
-import itertools
+from scipy.integrate import simps
+from scipy.interpolate import splev, splprep
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-import subprocess
+from numpy import ma
+from matplotlib.colors import ListedColormap
 import cv2
 from pykalman import KalmanFilter
-import matplotlib
-import platform
 import pims
+from skimage import feature, filters, measure
+
 
 
 """
 Some functions that I've found helpful. I'm sure this is reinventing the wheel,
 but whatever.
-
 """
 
 def isplit(iterable, splitters):
@@ -39,7 +43,7 @@ def partition(list_, num):
 
 
 def partition_indices(list_, num):
-    # Partition list as evenly as possible.
+    # Partition list as evenly as possible, return zipped indices.
     part_sizes = [len(list_) / int(num) for _ in range(num)]
     remainder = len(list_) % num    
     for part_num in range(remainder):
@@ -148,6 +152,14 @@ def tiff_to_ndarray(fn):
     for frame_num, frame in enumerate(frames):
         arr[frame_num, :, :] = np.fliplr(np.swapaxes(frame, 0, 1))
     return arr
+
+
+def imshow_overlay(im, mask, alpha=0.5, color='red', **kwargs):
+    """Show semi-transparent red mask over an image"""
+    mask = mask > 0
+    mask = ma.masked_where(~mask, mask)        
+    plt.imshow(im, **kwargs)
+    plt.imshow(mask, alpha=alpha, cmap=ListedColormap([color]))
 
 
 class AviReader:
@@ -288,7 +300,7 @@ def write_video(frames, filename, fps=20):
 
     
     if len(frames.shape) == 4:
-        pix_fmt = 'rgba'
+        pix_fmt = 'rgb24'
     else:
         pix_fmt = 'gray'
     
@@ -298,7 +310,8 @@ def write_video(frames, filename, fps=20):
         frames = frames.astype(np.uint8)
     frames -= frames.min()
     frames[frames>max_pix_val] = max_pix_val
-    frames *= 255. / max_pix_val
+    if max_pix_val > 0:
+            frames *= 255. / max_pix_val
     frames = frames.astype(np.uint8)
     
     # figure out which av program is installed
@@ -324,9 +337,9 @@ def write_video(frames, filename, fps=20):
             '-s', size_str, # size of one frame
             '-pix_fmt', pix_fmt,
             '-r', str(fps), # frames per second
-            '-i', '-', # The imput comes from a pipe
-            '-an', # Tells FFMPEG not to expect any audio
-            '-qscale', '4',
+            '-i', '-', # input comes from a pipe
+            '-an',     # no audio
+            '-qscale', '1',
             '-vcodec','mjpeg',
             filename]
     pipe = subprocess.Popen(cmd, stdin=subprocess.PIPE)
@@ -412,8 +425,54 @@ class KalmanSmoother2D:
         return self.smooth_covs
 
 
+def gray2rgb(im):
+    im = im.astype(np.float)
+    im /= im.max()
+    im = np.round(255*im)
+    im = im.astype(np.uint8)
+    
+    w, h = im.shape
+    ret = np.empty((w, h, 3), dtype=np.uint8)
+    ret[:, :, 0] = im
+    ret[:, :, 1] = im
+    ret[:, :, 2] = im
+    return ret
+    
 
-def snake_energy(flattened_pts, edge_dist, corner_dist, alpha, beta, gamma):
+def enhance_ridges(frame, mask=None):
+    """Detect ridges (larger hessian eigenvalue)"""
+    blurred = filters.gaussian_filter(frame, 2)
+    Hxx, Hxy, Hyy = feature.hessian_matrix(blurred, sigma=4.5, mode='nearest')
+    ridges = feature.hessian_matrix_eigvals(Hxx, Hxy, Hyy)[0]
+
+    return np.abs(ridges)
+
+
+
+def mask_to_boundary_pts(mask, pt_spacing=10):
+    """
+    Convert a binary image containing a single object to a set
+    of 2D points that are equally spaced along the object's contour.
+    """
+
+    # interpolate boundary
+    boundary_pts = measure.find_contours(mask, 0)[0]
+    tck, u = splprep(boundary_pts.T, u=None, s=0.0, per=1)
+    u_new = np.linspace(u.min(), u.max(), 1000)
+    x_new, y_new = splev(u_new, tck, der=0)
+
+    # get equi-spaced points along spline-interpolated boundary
+    x_diff, y_diff = np.diff(x_new), np.diff(y_new)
+    S = simps(np.sqrt(x_diff**2 + y_diff**2))
+    N = int(round(S/pt_spacing))
+
+    u_equidist = np.linspace(0, 1, N+1)
+    x_equidist, y_equidist = splev(u_equidist, tck, der=0)
+    return np.array(zip(x_equidist, y_equidist))
+    
+    
+    
+def snake_energy(flattened_pts, edge_dist, alpha, beta):
     """
     Compute the energy associated with a proposed contour. The contour is defined
     by N 2-dimensional points. The energy is comprised of external energy, which is
@@ -432,15 +491,11 @@ def snake_energy(flattened_pts, edge_dist, corner_dist, alpha, beta, gamma):
             Can be created by calling arr_2d.ravel() on an ordered (N,2)-shaped array 
             of points.
         edge_dist (2D numpy array): Distance transform of binary edge detector.
-        corner_dist (2D numpy array): Distance transform of binary interest point detector.
         alpha (float): The relative weight given to unevenly spaced points. A higher
             value encourages evenly-spaced points. Should be > 0.
         beta (float): The weight given to local curvature. A higher value encourages
             flat contours.
-        gamma (float): The relative weights given to the distance from edges or corners.
-            A gamma of 0 means to consider only the edges; gamma=1 means we use only
-            the corner distance image.
-    
+        
     Returns:
         float: Image energy. (lower is better)
     """
@@ -450,9 +505,7 @@ def snake_energy(flattened_pts, edge_dist, corner_dist, alpha, beta, gamma):
     # external energy (favors low values of distance image)
     dist_vals = ndimage.interpolation.map_coordinates(edge_dist, [pts[:,0], pts[:,1]], order=1)
     edge_energy = np.sum(dist_vals)
-    dist_vals = ndimage.interpolation.map_coordinates(corner_dist, [pts[:,0], pts[:,1]], order=1)
-    corner_energy = np.sum(dist_vals)
-    external_energy = (1-gamma)*edge_energy + gamma*corner_energy
+    external_energy = edge_energy
 
     # spacing energy (favors equi-distant points)
     prev_pts = np.roll(pts, 1, axis=0)
@@ -470,9 +523,7 @@ def snake_energy(flattened_pts, edge_dist, corner_dist, alpha, beta, gamma):
     return external_energy + alpha*spacing_energy + beta*curvature_energy
 
     
-def fit_snake(pts, corner_dist, edge_dist, 
-              alpha=0.5, beta=0.25, gamma=0.8, 
-              point_plot=None, nits=100):
+def fit_snake(pts, edge_dist, alpha=0.5, beta=0.25, nits=100, point_plot=None):
     """
     Fit an active contour model (aka snakes) based on some initial points and a 
     feature image. Given a list of points as a starting point, it evolves the points
@@ -486,14 +537,10 @@ def fit_snake(pts, corner_dist, edge_dist,
             adjacent points are consecutive in the list (ie, in clockwise or counter-
             clockwise order).
         edge_dist (2D numpy array): Distance transform of binary edge detector.
-        corner_dist (2D numpy array): Distance transform of binary interest point detector.
         alpha (float): The weight given to unevenly spaced points. A higher value encourages
             evenly-spaced points. Should be > 0.
         beta (float): The weight given to local curvature. A higher value encourages
             flat contours.
-        gamma (float): The relative weights given to the distance from edges or corners.
-            A gamma of 0 means to consider only the edges; gamma=1 means we use only
-            the corner distance image.
         point_plot (matplotlib.lines.Line2D, optional): A matplotlib line object for
             the given points. The Line2D data will be updated on each iteration to 
             provide an animation of the optimization.
@@ -516,8 +563,7 @@ def fit_snake(pts, corner_dist, edge_dist,
         callback_function = None
     
     # optimize
-    cost_function = partial(snake_energy, alpha=alpha, beta=beta, gamma=gamma, 
-                            edge_dist=edge_dist, corner_dist=corner_dist)
+    cost_function = partial(snake_energy, alpha=alpha, beta=beta, edge_dist=edge_dist)
     options = {'disp':False}
     options['maxiter'] = nits  # FIXME: check convergence
     method = 'BFGS'  # 'BFGS', 'CG', or 'Powell'. 'Nelder-Mead' has very slow convergence
@@ -525,19 +571,4 @@ def fit_snake(pts, corner_dist, edge_dist,
     optimal_pts = np.reshape(res.x, (len(res.x)/2, 2))
 
     return optimal_pts
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

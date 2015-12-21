@@ -34,10 +34,9 @@ def parse_command_line_args():
 
     description_str = 'Display a few plot to quanitify cell motion.'
     parser = argparse.ArgumentParser(description=description_str)
-    parser.add_argument('boundaries_fn', metavar='cell_boundary_file', type=str,
+    parser.add_argument('boundaries_fn', metavar='<cell boundary file>', type=str,
                         help='A numpy file containing the boundary points from cell tracking (cell[label]_boundary_points.npy)')
-    parser.add_argument('-bg', metavar='background_movie', type=str,
-                        required=False, help='a tiff movie to display under trajectory')
+    parser.add_argument('-bg', metavar='<background movie>', type=str, help='A tiff movie whose first frame is displayed under trajectory')
     args = parser.parse_args()
     return args.boundaries_fn, args.bg
 

@@ -70,7 +70,7 @@ def frame_to_distance_images(frame):
 
 def mask_to_boundary_pts(mask, pt_spacing=5):
     """
-    Convert a binary image containing a single object to a set
+    Convert a binary image containing a single object to a numpy array
     of 2D points that are equally spaced along the object's contour.
     """
 
@@ -131,6 +131,7 @@ class CellSelectorGUI:
     a region of interest with the mouse. All the labels that are clicked
     on are stored in the list "cell_labels". 
     """
+    # TODO: allow to select multiple cells
     
     def __init__(self, cell_labels):
         
@@ -179,7 +180,7 @@ def parse_command_line_args():
 
     description_str = 'Select a cell from a movie and track it across frames.'
     parser = argparse.ArgumentParser(description=description_str)
-    parser.add_argument('tiff_movie', metavar='tiff movie', type=str, help='an imagej-style tiff movie')
+    parser.add_argument('tiff_movie', metavar='<tiff movie>', type=str, help='an imagej-style tiff movie')
     args = parser.parse_args()
     return args.tiff_movie
 

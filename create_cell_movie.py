@@ -40,10 +40,10 @@ def parse_command_line_args():
 
     description_str = 'Save a window around a tracked cell as a movie file, so that the cell motion is \"frozen.\"'
     parser = argparse.ArgumentParser(description=description_str)
-    parser.add_argument('tiff_movie', metavar='tiff_movie', type=str, help='a tiff movie of the desired channel')
-    parser.add_argument('boundaries_fn', metavar='cell_boundary_file', type=str,
+    parser.add_argument('tiff_movie', metavar='<tiff movie>', type=str, help='a tiff movie of the desired channel')
+    parser.add_argument('boundaries_fn', metavar='<cell boundary file>', type=str,
                         help='A numpy file containing the boundary points from cell tracking (cell[label]_boundary_points.npy)')
-    parser.add_argument('-o', '--out', metavar='output movie file', type=str, help='output movie file')
+    parser.add_argument('-o', '--out', metavar='<output movie file>', type=str, help='output movie file')
     args = parser.parse_args()
     return args.tiff_movie, args.boundaries_fn, args.out
 
