@@ -16,7 +16,11 @@ from pykalman import KalmanFilter
 import pims
 from skimage import feature, filters, measure
 
-
+try:
+    from subprocess import DEVNULL # py3k
+except ImportError:
+    import os
+    DEVNULL = open(os.devnull, 'wb')
 
 """
 Some functions that I've found helpful. I'm sure this is reinventing the wheel,
@@ -317,11 +321,11 @@ def write_video(frames, filename, fps=20):
     # figure out which av program is installed
     program_name = ''
     try:
-        subprocess.check_call(['avconv', '-h'])
+        subprocess.check_call(['avconv', '-h'], stdout=DEVNULL, stderr=DEVNULL)
         program_name = 'avconv'
     except OSError:
         try:
-            subprocess.check_call(['ffmpeg', '-h'])
+            subprocess.check_call(['ffmpeg', '-h'], stdout=DEVNULL, stderr=DEVNULL)
             program_name = 'ffmpeg'
         except OSError:
             pass
@@ -342,15 +346,16 @@ def write_video(frames, filename, fps=20):
             '-qscale', '1',
             '-vcodec','mjpeg',
             filename]
-    pipe = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-
+    
+    pipe = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=DEVNULL, stderr=subprocess.STDOUT)
+    
     # write frames            
     for frame in frames:
         frame = np.fliplr(frame)
         pipe.stdin.write(frame.tostring())
     pipe.stdin.close()
     pipe.wait()
-
+    
 
 def label_im_to_color(im, cmap='jet'):
     im = im.astype(float)

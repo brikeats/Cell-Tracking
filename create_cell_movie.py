@@ -58,6 +58,7 @@ if __name__ == '__main__':
         cell_label = re.findall(r'\d+', boundaries_fn)[0]
         fn = 'cell%s.avi' % cell_label
         out_fn = os.path.join('.', fn)
+        print 'Output movie name unspecified, movie will be saved to %s.' % out_fn
 
 
     ### Load data
@@ -108,7 +109,7 @@ if __name__ == '__main__':
 
 
     # save to file
-    print 'Saving to', out_fn
+    print 'Saving movie to %s.' % out_fn
     write_video(windows, out_fn)
 
 
