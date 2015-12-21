@@ -181,8 +181,14 @@ def parse_command_line_args():
     description_str = 'Select a cell from a movie and track it across frames.'
     parser = argparse.ArgumentParser(description=description_str)
     parser.add_argument('tiff_movie', metavar='<tiff movie>', type=str, help='an imagej-style tiff movie')
+    parser.add_argument('-a', '--alpha', metavar='<alpha>', type=float, default=0.1,
+                        help='Fitting parameter that favors equi-spaced points')
+    parser.add_argument('-b', '--beta', metavar='<beta>', type=float, default=0.1,
+                        help='Fitting parameter that favors a smooth/round contour')
+    parser.add_argument('-s', '--spacing', metavar='<point spacing>', type=float, default=5,
+                        help='Approximate spacing of boundary points in pixel units')
     args = parser.parse_args()
-    return args.tiff_movie
+    return args.tiff_movie, args.alpha, args.beta, args.spacing
 
 
 
@@ -190,7 +196,7 @@ def parse_command_line_args():
 if __name__ == '__main__':
 
     ### parse command line arguments
-    tiff_fn = parse_command_line_args()
+    tiff_fn, alpha, beta, spacing = parse_command_line_args()
 
     ### load raw movie frames
     print 'Loading %s...' % tiff_fn,
@@ -222,7 +228,7 @@ if __name__ == '__main__':
     plt.ion()
     try:
         cell_selector = CellSelectorGUI(cell_labels)
-    except:  # throws a wierd Tkinter exception if user just closes window w/o selecting anything
+    except:  # throws a Tkinter exception if user just closes window w/o selecting anything
         sys.exit()
     selected_label = cell_selector.selected_cell_labels[-1]
     cell_mask = cell_selector.cell_mask
@@ -252,7 +258,7 @@ if __name__ == '__main__':
 
         # compute distance transforms and fit snake
         edge_dist, corner_dist = frame_to_distance_images(frame)
-        boundary_pts = fit_snake(boundary_pts, edge_dist, alpha=0.1, beta=0.1, nits=40)
+        boundary_pts = fit_snake(boundary_pts, edge_dist, alpha=alpha, beta=beta, nits=40)
 
         # TODO: resample the points along the curve to maintain contant spacing
         # store results in big array
