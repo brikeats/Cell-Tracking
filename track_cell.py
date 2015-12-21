@@ -250,9 +250,7 @@ if __name__ == '__main__':
 
         # compute distance transforms and fit snake
         edge_dist, corner_dist = frame_to_distance_images(frame)
-        boundary_pts = fit_snake(boundary_pts, edge_dist, corner_dist,
-                                 alpha=0.1, beta=0.1, gamma=0.8,
-                                 nits=20)
+        boundary_pts = fit_snake(boundary_pts, edge_dist, alpha=0.1, beta=0.1, nits=40)
 
         # TODO: resample the points along the curve to maintain contant spacing
         # store results in big array
