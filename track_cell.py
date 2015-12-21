@@ -220,13 +220,15 @@ if __name__ == '__main__':
 
     ### show the GUI and select a cell for scrutiny
     plt.ion()
-    cell_selector = CellSelectorGUI(cell_labels)
+    try:
+        cell_selector = CellSelectorGUI(cell_labels)
+    except:  # throws a wierd Tkinter exception if user just closes window w/o selecting anything
+        sys.exit()
     selected_label = cell_selector.selected_cell_labels[-1]
     cell_mask = cell_selector.cell_mask
     print 'You selected cell %i.' % selected_label
     sys.stdout.flush()
     # FIXME: this gives some mysterious warnings
-    # FIXME: catch the case where cell_selector.selected_cell_labels is empty
     # FIXME: alpha (and possibly beta) should scale with point spacing
 
 
