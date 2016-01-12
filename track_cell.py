@@ -200,6 +200,7 @@ if __name__ == '__main__':
     ### parse command line arguments
     tiff_fn, np_fn, alpha, beta, spacing = parse_command_line_args()
 
+
     ### load raw movie frames
     print 'Loading %s...' % tiff_fn,
     sys.stdout.flush()
@@ -268,13 +269,13 @@ if __name__ == '__main__':
 
     print 'elapsed time:', time.clock() - tsta
 
-
     ### write boundary points to file
-    if not np_fn:
+    print 'initial np_fn', np_fn
+    if np_fn is None:
         outdir = '.'
         out_fn = 'cell%i_boundary_points.npy' % selected_label
         np_fn = os.path.join(outdir, out_fn)
-    print 'Saving boundary points to', out_fn
+    print 'Saving boundary points to', np_fn
     np.save(np_fn, all_boundary_pts)
     
     
