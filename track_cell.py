@@ -8,7 +8,6 @@ import pims
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
-from scipy.ndimage.filters import uniform_filter
 from scipy.interpolate import splprep, splev
 from scipy.integrate import simps
 from skimage import filters, feature, morphology, measure
@@ -61,7 +60,7 @@ def frame_to_distance_images(frame):
     edge_dist = filters.gaussian_filter(edge_dist, sigma=2)
 
     # distance from skeleton branch points (ie, ridge intersections)
-    blurred_skeleton = uniform_filter(skeleton.astype(float), size=3)
+    blurred_skeleton = filters.uniform_filter(skeleton.astype(float), size=3)
     corner_im = blurred_skeleton > 4./9
     corner_dist = ndimage.distance_transform_edt(-corner_im)
     
@@ -181,6 +180,8 @@ def parse_command_line_args():
     description_str = 'Select a cell from a movie and track it across frames.'
     parser = argparse.ArgumentParser(description=description_str)
     parser.add_argument('tiff_movie', metavar='<tiff movie>', type=str, help='an imagej-style tiff movie')
+    parser.add_argument('-o', '--out', metavar='<output filename>', type=str, default=None,
+                        help='File to save the tracking output (as a numpy array)')
     parser.add_argument('-a', '--alpha', metavar='<alpha>', type=float, default=0.1,
                         help='Fitting parameter that favors equi-spaced points')
     parser.add_argument('-b', '--beta', metavar='<beta>', type=float, default=0.1,
