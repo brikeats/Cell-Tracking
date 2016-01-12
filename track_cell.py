@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy import ndimage
 from scipy.interpolate import splprep, splev
 from scipy.integrate import simps
+from scipy.ndimage.filters import uniform_filters
 from skimage import filters, feature, morphology, measure
 from skimage.morphology import disk
 from skimage.color import rgb2gray
