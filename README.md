@@ -17,7 +17,7 @@ Everything is pure python except for the function `write_movie` in `BKlib.py`, w
 
 All of the scripts take a tiff movie as input. You can see help instructions by typing the script name without any arguments. I've included a sample movie, `cell_membranes.tiff`.
 
-`track_cell.py` must be run first. It takes a tiff stack file as input, does a simple watershed-based segmentation, and presents a GUI to the user to select a region of interest (i.e., a single segmented cell). This region is then tracked across subsequent frames using an active contour/snakes model. Finally, the control points from the contours are saved to file for futher analysis. This output `npy` file is the main output; take note of its name, since it is a required argument for the other scripts.
+`track_cell.py` must be run first. It takes a tiff file as input, does a simple watershed-based segmentation, and presents a GUI to the user to select a region of interest (i.e., a single segmented cell). This region is then tracked across subsequent frames using an active contour/snakes model. Finally, the control points from the contours are saved to an `npy` file for futher analysis. This output `npy` file is the main output; take note of its name, since it is a required argument for the other scripts.
 
 `visualize_tracking.py` shows the movie with the tracking results overlaid. Use the `-o` flag to specify an output avi filename in order to save the visualization as a movie.
 
