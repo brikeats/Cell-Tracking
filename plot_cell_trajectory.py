@@ -49,7 +49,11 @@ if __name__ == '__main__':
 
     ### Load data
     all_boundary_pts = np.load(boundaries_fn)
-    cell_label = re.findall(r'\d+', boundaries_fn)[0]
+    try:
+        cell_label = re.findall(r'\d+', boundaries_fn)[0]
+    except IndexError:
+        cell_label = -1
+        
     frames = pims.TiffStack(tif_fn)
     frame = frames[0]
 
