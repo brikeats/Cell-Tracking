@@ -14,7 +14,8 @@ from scipy.ndimage.filters import uniform_filter
 from skimage import filters, feature, morphology, measure
 from skimage.morphology import disk
 from skimage.color import rgb2gray
-from BKlib import fit_snake, tiff_to_ndarray
+from BKlib import tiff_to_ndarray
+from snakes import fit_snake
 
     
 
@@ -185,7 +186,7 @@ def parse_command_line_args():
                         help='File to save the tracking output (as a numpy array)')
     parser.add_argument('-a', '--alpha', metavar='<alpha>', type=float, default=0.1,
                         help='Fitting parameter that favors equi-spaced points')
-    parser.add_argument('-b', '--beta', metavar='<beta>', type=float, default=0.1,
+    parser.add_argument('-b', '--beta', metavar='<beta>', type=float, default=0.2,
                         help='Fitting parameter that favors a smooth/round contour')
     parser.add_argument('-s', '--spacing', metavar='<point spacing>', type=float, default=5,
                         help='Approximate spacing of boundary points in pixel units')

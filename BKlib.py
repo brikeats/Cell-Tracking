@@ -528,7 +528,7 @@ def snake_energy(flattened_pts, edge_dist, alpha, beta):
     return external_energy + alpha*spacing_energy + beta*curvature_energy
 
     
-def fit_snake(pts, edge_dist, alpha=0.5, beta=0.25, nits=100, point_plot=None):
+def fit_snake(pts, edge_dist, alpha=0.5, beta=500, nits=40, point_plot=None):
     """
     Fit an active contour model (aka snakes) based on some initial points and a 
     feature image. Given a list of points as a starting point, it evolves the points
