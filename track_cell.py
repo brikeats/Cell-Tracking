@@ -190,7 +190,7 @@ def parse_command_line_args():
     parser.add_argument('-s', '--spacing', metavar='<point spacing>', type=float, default=5,
                         help='Approximate spacing of boundary points in pixel units')
     args = parser.parse_args()
-    return args.tiff_movie, args.alpha, args.beta, args.spacing
+    return args.tiff_movie, args.out, args.alpha, args.beta, args.spacing
 
 
 
@@ -198,7 +198,7 @@ def parse_command_line_args():
 if __name__ == '__main__':
 
     ### parse command line arguments
-    tiff_fn, alpha, beta, spacing = parse_command_line_args()
+    tiff_fn, np_fn, alpha, beta, spacing = parse_command_line_args()
 
     ### load raw movie frames
     print 'Loading %s...' % tiff_fn,
@@ -262,7 +262,7 @@ if __name__ == '__main__':
         edge_dist, corner_dist = frame_to_distance_images(frame)
         boundary_pts = fit_snake(boundary_pts, edge_dist, alpha=alpha, beta=beta, nits=40)
 
-        # TODO: resample the points along the curve to maintain contant spacing
+        # TODO: resample the points along the curve to maintain contant spacing?
         # store results in big array
         all_boundary_pts[frame_num,:,:] = boundary_pts
 
@@ -270,11 +270,12 @@ if __name__ == '__main__':
 
 
     ### write boundary points to file
-    outdir = '.'
-    out_fn = 'cell%i_boundary_points.npy' % selected_label
-    out_fn = os.path.join(outdir, out_fn)
+    if not np_fn:
+        outdir = '.'
+        out_fn = 'cell%i_boundary_points.npy' % selected_label
+        np_fn = os.path.join(outdir, out_fn)
     print 'Saving boundary points to', out_fn
-    np.save(out_fn, all_boundary_pts)
+    np.save(np_fn, all_boundary_pts)
     
     
     
