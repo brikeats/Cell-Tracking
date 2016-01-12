@@ -61,7 +61,7 @@ def frame_to_distance_images(frame):
     edge_dist = filters.gaussian_filter(edge_dist, sigma=2)
 
     # distance from skeleton branch points (ie, ridge intersections)
-    blurred_skeleton = filters.uniform_filter(skeleton.astype(float), size=3)
+    blurred_skeleton = uniform_filter(skeleton.astype(float), size=3)
     corner_im = blurred_skeleton > 4./9
     corner_dist = ndimage.distance_transform_edt(-corner_im)
     
