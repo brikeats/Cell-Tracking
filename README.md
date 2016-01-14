@@ -7,6 +7,7 @@ Python scripts for tracking cells in fluorescent microscopy, for [Ed Munro's gro
 * Python 2.7
 * Python scientific stack (`numpy`, `scipy`, `matplotlib`)
 * `scikit-image`
+* `pykalman`
 * `pims` for reading tiff stacks
 * `ffmpeg` or `avconv` command line tools for creating movies
 
