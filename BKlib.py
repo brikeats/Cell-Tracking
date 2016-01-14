@@ -11,7 +11,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from numpy import ma
 from matplotlib.colors import ListedColormap
-import cv2
 from pykalman import KalmanFilter
 import pims
 from skimage import feature, filters, measure
@@ -165,63 +164,63 @@ def imshow_overlay(im, mask, alpha=0.5, color='red', **kwargs):
     plt.imshow(im, **kwargs)
     plt.imshow(mask, alpha=alpha, cmap=ListedColormap([color]))
 
-
-class AviReader:
-
-    """Read a file as an immutable, iterable, sliceable  sequence of frames."""
-
-    def __init__(self, fn):
-        self.cap = cv2.VideoCapture(fn)
-        self.first_frame = 0
-        self.last_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.fn = fn
-        self.num_frames = len(self)
-        self.frame_rate = int(self.cap.get(cv2.CAP_PROP_FPS))
-        self.frame_size = (self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
-                           self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-
-    def __len__(self):
-        return self.last_frame - self.first_frame
-
-    def __iter__(self):
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.first_frame)
-        return self
-
-    def next(self):
-        current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
-        if current_frame >= self.last_frame:
-            raise StopIteration
-        else:
-            _, frame = self.cap.read()
-            return frame
-
-    def __str__(self):
-        repr_str = 'AviReader instance from '+self.fn+': '
-        repr_str += str(len(self))+' frames of shape '+str(self.frame_size())
-        repr_str += ', ' +str(self.frame_rate())+' fps'
-        return repr_str
-
-    def __getitem__(self, index):
-        # FIXME: doesn't handle step (stride), nor negative slice indices
-        if isinstance(index, int):  # single frame
-            if index < 0:
-                index = len(self) + index
-            if index + self.first_frame > self.last_frame:
-                raise IndexError
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, index + self.first_frame)
-            ok, frame = self.cap.read()
-            if ok:
-                return frame
-            else:
-                raise IndexError
-        elif isinstance(index, slice):  # slice
-            self.first_frame = index.start
-            # if index.stop is not None:  # FIXME: why doesn't this work with [sta:] indexing?
-            if index.stop <= self.last_frame:
-                self.last_frame = index.stop
-            return self
-        else:
-            raise TypeError('Avi indices should be integer or slices')
+#
+#class AviReader:
+#
+#    """Read a file as an immutable, iterable, sliceable  sequence of frames."""
+#
+#    def __init__(self, fn):
+#        self.cap = cv2.VideoCapture(fn)
+#        self.first_frame = 0
+#        self.last_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#        self.fn = fn
+#        self.num_frames = len(self)
+#        self.frame_rate = int(self.cap.get(cv2.CAP_PROP_FPS))
+#        self.frame_size = (self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT),
+#                           self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+#
+#    def __len__(self):
+#        return self.last_frame - self.first_frame
+#
+#    def __iter__(self):
+#        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.first_frame)
+#        return self
+#
+#    def next(self):
+#        current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+#        if current_frame >= self.last_frame:
+#            raise StopIteration
+#        else:
+#            _, frame = self.cap.read()
+#            return frame
+#
+#    def __str__(self):
+#        repr_str = 'AviReader instance from '+self.fn+': '
+#        repr_str += str(len(self))+' frames of shape '+str(self.frame_size())
+#        repr_str += ', ' +str(self.frame_rate())+' fps'
+#        return repr_str
+#
+#    def __getitem__(self, index):
+#        # FIXME: doesn't handle step (stride), nor negative slice indices
+#        if isinstance(index, int):  # single frame
+#            if index < 0:
+#                index = len(self) + index
+#            if index + self.first_frame > self.last_frame:
+#                raise IndexError
+#            self.cap.set(cv2.CAP_PROP_POS_FRAMES, index + self.first_frame)
+#            ok, frame = self.cap.read()
+#            if ok:
+#                return frame
+#            else:
+#                raise IndexError
+#        elif isinstance(index, slice):  # slice
+#            self.first_frame = index.start
+#            # if index.stop is not None:  # FIXME: why doesn't this work with [sta:] indexing?
+#            if index.stop <= self.last_frame:
+#                self.last_frame = index.stop
+#            return self
+#        else:
+#            raise TypeError('Avi indices should be integer or slices')
 
 
 
@@ -474,106 +473,3 @@ def mask_to_boundary_pts(mask, pt_spacing=10):
     u_equidist = np.linspace(0, 1, N+1)
     x_equidist, y_equidist = splev(u_equidist, tck, der=0)
     return np.array(zip(x_equidist, y_equidist))
-    
-    
-    
-def snake_energy(flattened_pts, edge_dist, alpha, beta):
-    """
-    Compute the energy associated with a proposed contour. The contour is defined
-    by N 2-dimensional points. The energy is comprised of external energy, which is
-    derived from the supplied distance images; and internal energy, which is computed
-    based only on the characteristics of the contour. Note that the image 
-    interpolation uses only 1st-order splines, which increases speed at the 
-    expense of accuracy.
-    
-    The current implementation was created for a closed contour. An open contour 
-    formulation should replace the periodic 'np.roll' calls by non-periodic end-off 
-    shifts.
-
-    Args:
-        flattened_pts ((2*N,)-shaped numpy array): A flattened list of the contour 
-            points, ordered so that adjacent points are consecutive in the list. 
-            Can be created by calling arr_2d.ravel() on an ordered (N,2)-shaped array 
-            of points.
-        edge_dist (2D numpy array): Distance transform of binary edge detector.
-        alpha (float): The relative weight given to unevenly spaced points. A higher
-            value encourages evenly-spaced points. Should be > 0.
-        beta (float): The weight given to local curvature. A higher value encourages
-            flat contours.
-        
-    Returns:
-        float: Image energy. (lower is better)
-    """
-
-    pts = np.reshape(flattened_pts, (len(flattened_pts)/2, 2))
-    
-    # external energy (favors low values of distance image)
-    dist_vals = ndimage.interpolation.map_coordinates(edge_dist, [pts[:,0], pts[:,1]], order=1)
-    edge_energy = np.sum(dist_vals)
-    external_energy = edge_energy
-
-    # spacing energy (favors equi-distant points)
-    prev_pts = np.roll(pts, 1, axis=0)
-    next_pts = np.roll(pts, -1, axis=0)
-    displacements = pts - prev_pts
-    point_distances = np.sqrt(displacements[:,0]**2 + displacements[:,1]**2)
-    mean_dist = np.mean(point_distances)
-    spacing_energy = np.sum((point_distances - mean_dist)**2)
-
-    # curvature energy (favors smooth curves)
-    curvature_1d = prev_pts - 2*pts + next_pts
-    curvature = (curvature_1d[:,0]**2 + curvature_1d[:,1]**2)
-    curvature_energy = np.sum(curvature)
-    
-    return external_energy + alpha*spacing_energy + beta*curvature_energy
-
-    
-def fit_snake(pts, edge_dist, alpha=0.5, beta=500, nits=40, point_plot=None):
-    """
-    Fit an active contour model (aka snakes) based on some initial points and a 
-    feature image. Given a list of points as a starting point, it evolves the points
-    until they sit at a minimum of the energy function 'snake_energy'. This function
-    is not especially good at avoiding local minima, and it does not adapt the number 
-    of points in the contour. Therefore, it is most useful for "polishing up" and 
-    already good initial guess.
-
-    Args:
-        pts ((N,2)-shaped numpy array): A list of the contour points, ordered so that
-            adjacent points are consecutive in the list (ie, in clockwise or counter-
-            clockwise order).
-        edge_dist (2D numpy array): Distance transform of binary edge detector.
-        alpha (float): The weight given to unevenly spaced points. A higher value encourages
-            evenly-spaced points. Should be > 0.
-        beta (float): The weight given to local curvature. A higher value encourages
-            flat contours.
-        point_plot (matplotlib.lines.Line2D, optional): A matplotlib line object for
-            the given points. The Line2D data will be updated on each iteration to 
-            provide an animation of the optimization.
-    
-    Returns:
-        (N,2)-shaped numpy array: The points after minimization.
-    """
-    
-    if point_plot:
-        def callback_function(new_pts):
-            callback_function.nits += 1
-            y = new_pts[0::2]
-            x = new_pts[1::2]
-            point_plot.set_data(x,y)
-            plt.title('%i iterations' % callback_function.nits)
-            point_plot.figure.canvas.draw()
-            time.sleep(0.1)
-        callback_function.nits = 0
-    else:
-        callback_function = None
-    
-    # optimize
-    cost_function = partial(snake_energy, alpha=alpha, beta=beta, edge_dist=edge_dist)
-    options = {'disp':False}
-    options['maxiter'] = nits  # FIXME: check convergence
-    method = 'BFGS'  # 'BFGS', 'CG', or 'Powell'. 'Nelder-Mead' has very slow convergence
-    res = optimize.minimize(cost_function, pts.ravel(), method=method, options=options, callback=callback_function)
-    optimal_pts = np.reshape(res.x, (len(res.x)/2, 2))
-
-    return optimal_pts
-
