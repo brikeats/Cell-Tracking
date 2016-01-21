@@ -19,7 +19,7 @@ from snakes import fit_snake
 
     
 
-def enhance_ridges(frame, mask=None):
+def enhance_ridges(frame):
     """A ridge detection filter (larger hessian eigenvalue)"""
     blurred = filters.gaussian_filter(frame, 2)
     sigma = 4.5
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     print 'Computing initial segmentation...',
     sys.stdout.flush()
     frame = frames[0]
-    cell_labels = segment_cells(frame, mask)
+    cell_labels = segment_cells(frame, np.copy(mask))
     print 'done.'
     sys.stdout.flush()
 
@@ -264,6 +264,13 @@ if __name__ == '__main__':
         edge_dist, corner_dist = frame_to_distance_images(frame)
         boundary_pts = fit_snake(boundary_pts, edge_dist, alpha=alpha, beta=beta, nits=40)
 
+        # check if the cell went off the edge (i.e., out of view)
+        single_cell_mask = measure.grid_points_in_poly(frame.shape, boundary_pts)
+        if np.any(np.logical_and(~mask, single_cell_mask)):
+            print 'cell went off edge on frame %i' % frame_num
+            all_boundary_pts = np.delete(all_boundary_pts, np.s_[frame_num:], 0)
+            break
+
         # TODO: resample the points along the curve to maintain contant spacing?
         # store results in big array
         all_boundary_pts[frame_num,:,:] = boundary_pts
@@ -271,7 +278,6 @@ if __name__ == '__main__':
     print 'elapsed time:', time.clock() - tsta
 
     ### write boundary points to file
-    print 'initial np_fn', np_fn
     if np_fn is None:
         outdir = '.'
         out_fn = 'cell%i_boundary_points.npy' % selected_label
