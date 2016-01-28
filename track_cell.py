@@ -176,8 +176,7 @@ class CellSelectorGUI:
         
 
 def parse_command_line_args():
-    # TODO: additional arguments: alpha, beta, gamma, spacing of boundary points.
-    # TODO: additional arguments: some of the sigmas and/or thresholds?
+    # TODO: additional arguments: add options some of the sigmas and/or thresholds?
 
     description_str = 'Select a cell from a movie and track it across frames.'
     parser = argparse.ArgumentParser(description=description_str)
