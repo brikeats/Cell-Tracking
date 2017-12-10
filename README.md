@@ -4,11 +4,10 @@ Python scripts for tracking cells in fluorescent microscopy, for [Ed Munro's gro
 
 ## Prerequisites
 
-* Python 2.7
+* Python 3.6
 * Python scientific stack (`numpy`, `scipy`, `matplotlib`)
 * `scikit-image`
 * `pykalman`
-* `pims` for reading tiff stacks
 * `ffmpeg` or `avconv` command line tools for creating movies
 
 Everything is pure python except for the function `write_movie` in `BKlib.py`, which uses `ffmpeg`/`avconv`. One of these will probably be installed on Linux machines; it can be installed on Mac using the binaries [here](http://ffmpegmac.net/). The scripts should work on Windows, except for the function `write_movie`, which depends on `avconv`.
