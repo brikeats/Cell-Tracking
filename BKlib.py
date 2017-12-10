@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from numpy import ma
 from matplotlib.colors import ListedColormap
 from pykalman import KalmanFilter
-import pims
 from skimage import feature, filters, measure
+from skimage.external import tifffile
 
 try:
     from subprocess import DEVNULL # py3k
@@ -82,7 +82,7 @@ def read_config_file(fn):
             else:
                 line_parts = line.split(' ')
             if len(line_parts) != 2:
-                print 'Could not parse line', line, ', skipping...'
+                print('Could not parse line', line, ', skipping...')
                 continue
             
             # cast to appropriate type
@@ -105,12 +105,12 @@ def print_image_properties(im):
         nchan = im.shape[3]
     except IndexError:
         nchan = 1
-    print
-    print 'image size:    %i x %i' % (im.shape[0], im.shape[1])
-    print 'num. channels: %i' % nchan
-    print 'dtype: %s' % im.dtype
-    print 'min, max: %.1f, %.1f' % (np.min(im), np.max(im))
-    print 'mean, stdev: %.1f, %.1f' % (np.mean(im), np.std(im))
+    print()
+    print('image size:    %i x %i' % (im.shape[0], im.shape[1]))
+    print('num. channels: %i' % nchan)
+    print('dtype: %s' % im.dtype)
+    print('min, max: %.1f, %.1f' % (np.min(im), np.max(im)))
+    print('mean, stdev: %.1f, %.1f' % (np.mean(im), np.std(im)))
     
 
 def vidshow(frames, start_frame=0, end_frame=-1, fps=10, **kwargs):
@@ -148,13 +148,7 @@ def tiff_to_ndarray(fn):
     Load a tiff stack as 3D numpy array.
     You must have enough RAM to hold the whole movie in memory.
     """
-    frames = pims.TiffStack(fn)
-    num_frames = len(frames)
-    sz = frames.frame_shape
-    arr = np.empty((num_frames, sz[0], sz[1]), dtype=frames.pixel_type)
-    for frame_num, frame in enumerate(frames):
-        arr[frame_num, :, :] = np.fliplr(np.swapaxes(frame, 0, 1))
-    return arr
+    return tifffile.imread(fn)
 
 
 def imshow_overlay(im, mask, alpha=0.5, color='red', **kwargs):
@@ -411,7 +405,7 @@ class KalmanSmoother2D:
         
     def set_initial_state(self, initial_mean, initial_covariance=np.zeros((4,4))):
         if initial_mean.shape[0] == 2:
-            print 'initial velocity unspecified, assuming v0 = 0'
+            print('initial velocity unspecified, assuming v0 = 0')
             initial_mean = np.array([initial_mean[0], initial_mean[1], 0, 0])
         self.kf.initial_state_mean = initial_mean
         self.kf.initial_state_covariance = initial_covariance
