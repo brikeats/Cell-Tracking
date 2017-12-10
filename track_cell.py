@@ -4,7 +4,6 @@ import os
 import sys
 import argparse
 import time
-import pims
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage
@@ -16,15 +15,18 @@ from skimage.morphology import disk
 from skimage.color import rgb2gray
 from BKlib import tiff_to_ndarray
 from snakes import fit_snake
+import warnings
 
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", RuntimeWarning)
     
 
 def enhance_ridges(frame):
     """A ridge detection filter (larger hessian eigenvalue)"""
-    blurred = filters.gaussian_filter(frame, 2)
+    blurred = filters.gaussian(frame, 2)
     sigma = 4.5
-    Hxx, Hxy, Hyy = feature.hessian_matrix(blurred, sigma=sigma, mode='nearest')
-    ridges = feature.hessian_matrix_eigvals(Hxx, Hxy, Hyy)[0]
+    Hxx, Hxy, Hyy = feature.hessian_matrix(blurred, sigma=sigma, mode='nearest', order='xy')
+    ridges = feature.hessian_matrix_eigvals(Hxx, Hxy, Hyy)[1]
     return np.abs(ridges)
 
 
@@ -58,13 +60,13 @@ def frame_to_distance_images(frame):
     thresh = filters.threshold_otsu(ridges)
     prominent_ridges = ridges > 0.8*thresh
     skeleton = morphology.skeletonize(prominent_ridges)
-    edge_dist = ndimage.distance_transform_edt(-skeleton)
-    edge_dist = filters.gaussian_filter(edge_dist, sigma=2)
+    edge_dist = ndimage.distance_transform_edt(~skeleton)
+    edge_dist = filters.gaussian(edge_dist, sigma=2)
 
     # distance from skeleton branch points (ie, ridge intersections)
     blurred_skeleton = uniform_filter(skeleton.astype(float), size=3)
     corner_im = blurred_skeleton > 4./9
-    corner_dist = ndimage.distance_transform_edt(-corner_im)
+    corner_dist = ndimage.distance_transform_edt(~corner_im)
     
     return edge_dist, corner_dist
 
@@ -88,7 +90,7 @@ def mask_to_boundary_pts(mask, pt_spacing=5):
 
     u_equidist = np.linspace(0, 1, N+1)
     x_equidist, y_equidist = splev(u_equidist, tck, der=0)
-    return np.array(zip(x_equidist, y_equidist))
+    return np.array(list(zip(x_equidist, y_equidist)))
 
 
 def segment_cells(frame, mask=None):
@@ -97,12 +99,12 @@ def segment_cells(frame, mask=None):
     This works reasonably well, but is not robust enough to use by itself.
     """
     
-    blurred = filters.gaussian_filter(frame, 2)
+    blurred = filters.gaussian(frame, 2)
     ridges = enhance_ridges(frame)
     
     # threshold ridge image
     thresh = filters.threshold_otsu(ridges)
-    thresh_factor = 0.6
+    thresh_factor = 0.5
     prominent_ridges = ridges > thresh_factor*thresh
     prominent_ridges = morphology.remove_small_objects(prominent_ridges, min_size=256)
     prominent_ridges = morphology.binary_closing(prominent_ridges)
@@ -112,7 +114,7 @@ def segment_cells(frame, mask=None):
     ridge_skeleton = morphology.medial_axis(prominent_ridges)
     ridge_skeleton = morphology.binary_dilation(ridge_skeleton)
     ridge_skeleton *= mask
-    ridge_skeleton -= mask
+    ridge_skeleton = np.bitwise_xor(ridge_skeleton, mask)
     
     # label
     cell_label_im = measure.label(ridge_skeleton)
@@ -146,7 +148,7 @@ class CellSelectorGUI:
         plt.title('Click to select a cell to track')
         plt.axis('off')
         
-        button_ax = plt.subplot2grid((grid_sz,grid_sz ), (grid_sz-1,grid_sz/2))
+        button_ax = plt.subplot2grid((grid_sz,grid_sz ), (grid_sz-1,grid_sz//2))
         self.done_button = plt.Button(button_ax, 'Done')
         self.done_button.on_clicked(self.on_button_press)
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self.on_mouse_click)
@@ -154,7 +156,9 @@ class CellSelectorGUI:
         self.cell_labels = cell_labels
         self.selected_cell_labels = []
         self.cell_mask = None
-        self.fig.canvas.start_event_loop(timeout=-1)
+        # self.fig.canvas.start_event_loop(timeout=-1)
+        plt.show()
+
         
     def on_mouse_click(self, event):
         try:
@@ -202,42 +206,41 @@ if __name__ == '__main__':
 
 
     ### load raw movie frames
-    print 'Loading %s...' % tiff_fn,
+    print('Loading %s...' % tiff_fn, end='')
     sys.stdout.flush()
     frames = tiff_to_ndarray(tiff_fn).astype(float)
-    print 'done.'
+    print('done.')
     sys.stdout.flush()
 
 
     ### Compute the big mask (contains all cells, same for all frames)
-    print 'Computing global mask...',
+    print('Computing global mask...', end='')
     sys.stdout.flush()
-    mask_frame = frames[0,:,:]
+    mask_frame = frames[0]
     mask = create_mask(mask_frame)
-    print 'done.'
+    print('done.')
     sys.stdout.flush()
 
 
     ### Segment first frame via ridge detection + watershed
-    print 'Computing initial segmentation...',
+    print('Computing initial segmentation...', end='')
     sys.stdout.flush()
     frame = frames[0]
     cell_labels = segment_cells(frame, np.copy(mask))
-    print 'done.'
+    print('done.')
     sys.stdout.flush()
 
 
     ### show the GUI and select a cell for scrutiny
-    plt.ion()
-    try:
-        cell_selector = CellSelectorGUI(cell_labels)
-    except:  # throws a Tkinter exception if user just closes window w/o selecting anything
-        sys.exit()
-    selected_label = cell_selector.selected_cell_labels[-1]
+    cell_selector = CellSelectorGUI(cell_labels)
+    selected_labels = cell_selector.selected_cell_labels
+    if not selected_labels:
+        sys.exit(0)
+    selected_label = selected_labels[0]
     cell_mask = cell_selector.cell_mask
-    print 'You selected cell %i.' % selected_label
+    print('You selected cell %i.' % selected_label)
     sys.stdout.flush()
-    # FIXME: this gives some mysterious warnings
+
     # FIXME: alpha (and possibly beta) should scale with point spacing
 
 
@@ -246,17 +249,18 @@ if __name__ == '__main__':
     # initial boundary points
     boundary_pts = mask_to_boundary_pts(cell_mask, pt_spacing=6)
 
+    
     # allocate array
     all_boundary_pts = np.empty((len(frames), boundary_pts.shape[0], boundary_pts.shape[1]))
 
     # Frame-by-frame snake fit. This is fairly slow; takes ~80 sec on my laptop.
     tsta = time.clock()
-    print 'Tracking cell %i across %i frames...' % (selected_label, len(frames))
+    print('Tracking cell %i across %i frames...' % (selected_label, len(frames)))
     for frame_num, frame in enumerate(frames):
 
         # print progress
         if frame_num%10 == 0:
-            print 'Frame %i of %i' % (frame_num, len(frames))
+            print('Frame %i of %i' % (frame_num, len(frames)))
             sys.stdout.flush()
 
         # compute distance transforms and fit snake
@@ -266,22 +270,22 @@ if __name__ == '__main__':
         # check if the cell went off the edge (i.e., out of view)
         single_cell_mask = measure.grid_points_in_poly(frame.shape, boundary_pts)
         if np.any(np.logical_and(~mask, single_cell_mask)):
-            print 'cell went off edge on frame %i' % frame_num
+            print('cell went off edge on frame %i' % frame_num)
             all_boundary_pts = np.delete(all_boundary_pts, np.s_[frame_num:], 0)
             break
 
         # TODO: resample the points along the curve to maintain contant spacing?
         # store results in big array
-        all_boundary_pts[frame_num,:,:] = boundary_pts
+        all_boundary_pts[frame_num] = boundary_pts
 
-    print 'elapsed time:', time.clock() - tsta
+    print('elapsed time:', time.clock() - tsta)
 
     ### write boundary points to file
     if np_fn is None:
         outdir = '.'
         out_fn = 'cell%i_boundary_points.npy' % selected_label
         np_fn = os.path.join(outdir, out_fn)
-    print 'Saving boundary points to', np_fn
+    print('Saving boundary points to', np_fn)
     np.save(np_fn, all_boundary_pts)
     
     
